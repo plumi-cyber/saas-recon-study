@@ -1,0 +1,17 @@
+# Personal notes that should never be pushed publicly
+**/PRIVATE/
+**/personal-*.md
+
+# Evidence files — reviewed case-by-case before pushing
+evidence/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Editor/OS junk
+.DS_Store
+*.swp
+.vscode/
