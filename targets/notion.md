@@ -64,15 +64,36 @@ Architectural observation: Notion proxies third-party JavaScript through their o
 - Note: external JS bundles may still reference source maps; can only confirm definitively by inspecting each bundle in DevTools Sources tab.
 
 ## Public files
-- robots.txt: 
-- security.txt: 
-- sitemap.xml: 
+- robots.txt: Present, disciplined. Disallow rules are index-hygiene only
+  (search pages, experiments, embeds) — no sensitive paths leaked. Corroborates
+  Vercel (Disallow: /_vercel/insights/view). One named path of interest:
+  /product/agents-homepage. Aggressively blocks SEO/AI scrapers (Ahrefs,
+  Semrush, Amazonbot, BLEXBot, dotbot). Reveals subdomain: sitemaps.notion.com.
+- security.txt: ABSENT (404). No published disclosure contact via this convention.
+- sitemap.xml: Sitemap INDEX (not flat). Internationalized (es-es, zh-cn, …),
+  segmented by section. Indicates large multi-locale public footprint. 
 
 ## Certificate transparency
-- Subdomains visible (crt.sh): 
+- Subdomains visible (crt.sh, query *.notion.com): a few hundred certs. Distinct
+  subdomains group into three tiers:
+  - Production: www, app, api, mail, events, community, academy, trustcenter,
+    developers, help, info, identity, file, faces, cloud, services.cloud.
+  - Non-production (notable): stg.notion.com, dev.notion.com, prod.notion.com
+    and wildcards; deeper: api-stg, integrations-api-stg, admin-stg, app.dev,
+    mail.dev, identity.dev, file.dev, faces.dev.
+  - Infra internals: imgproxy.infra-prod / infra-dev, regional prefixes
+    (ap-northeast-1, us-west-2, eu-central-1), mail-resource-proxy.
+- CT exposes full environment-tier topology (prod/staging/dev) passively. NOT
+  PROBED — names recorded, none visited. (Discipline note for writeup.)
+- Issuer history: earliest certs (2013–16) from paid CAs (GlobalSign, USERTrust,
+  Comodo); migrated to automated issuance (Cloudflare, Let's Encrypt, Google
+  Trust Services, Amazon) as they scaled. Maturity signal, not a hosting fact.
 
 ## Anything unusual
 - No HTML comments found in production source. Build pipeline strips them — including framework boilerplate. Consistent with overall pattern of minimal-surface-area inline HTML.
+- robots.txt independently corroborates Vercel hosting (second signal after the
+  x-vercel-cache header in Security headers) — and reveals a previously unseen
+  subdomain, sitemaps.notion.com, to verify in Certificate transparency.
 
 ## Network performance (from DevTools)
 - 169 total requests
@@ -100,3 +121,25 @@ Architectural observation: Notion proxies third-party JavaScript through their o
   - Sunshine Conversations (smooch.io) for messaging — Zendesk family
 - CSP `unsafe-inline` and `unsafe-eval` are not negligence — they're a tradeoff most large React-based SaaS make. Worth comparing across targets: which ones manage strict CSP (likely smaller/newer sites with simpler stacks) vs. which accept unsafe-inline (likely larger SaaS with many vendors).
 - HSTS configuration is gold-standard; missing X-Content-Type-Options and Permissions-Policy are free hardening Notion hasn't added yet.
+- Public-files discipline as a maturity signal: clean robots (no leaks), no
+  accidental path disclosure. Worth tracking the security.txt present/absent
+  ratio across all 10 — that ratio is a finding in itself, not any single 404.
+  - sitemaps.notion.com (seen in robots.txt) did not appear as a named identity
+  in crt.sh — likely covered by a *.notion.com wildcard cert rather than its own,
+  so it can't be independently confirmed via CT. Not a discrepancy; just noted.
+
+  ## Posture summary
+
+Notion presents one of the leanest, most disciplined public surfaces you could
+pick as a baseline target — restraint at every layer. Production HTML is stripped
+of comments and exposes no API endpoints or unintended secrets (the lone Sentry
+DSN is public by design); meaningful client config loads from external bundles;
+security headers earn an A with gold-standard HSTS and a rich CSP; robots.txt
+leaks nothing. The richest intelligence came not from mistakes but from things
+Notion publishes on purpose: the CSP allowlist mapped their full third-party
+vendor stack (Splunk as SIEM, Stripe, Amplitude, three AI support vendors), and
+certificate transparency exposed their entire prod/staging/dev environment
+topology. Hardening gaps are minor and cosmetic — two missing low-impact headers,
+a framework-version leak via x-powered-by, no published security.txt. Net read:
+a mature engineering org whose attack surface is small by design, where the
+useful recon signal lives in public-by-design metadata, not leaks.
